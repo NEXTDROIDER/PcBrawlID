@@ -1,0 +1,10 @@
+﻿{
+    "name":  "pcbrawl-v20",
+    "version":  "1.0.0",
+    "scripts":  {
+                    "start:auth":  "node auth-server.js"
+                },
+    "dependencies":  {
+                         "pg":  "^8.16.3"
+                     }
+}

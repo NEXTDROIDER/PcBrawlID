@@ -1,0 +1,21 @@
+﻿services:
+  - type: web
+    name: pcbrawl-id-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run start:auth
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pcbrawl-id-db
+          property: connectionString
+
+databases:
+  - name: pcbrawl-id-db
+    databaseName: pcbrawl_id
+    user: pcbrawl_id_user
+    plan: free
