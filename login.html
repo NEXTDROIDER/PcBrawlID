@@ -1,53 +1,99 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nextdroider ID</title>
+<title>Nextdroider ID — PcBrawl V20</title>
 <style>
+*{box-sizing:border-box}
 body{background:#111218;color:#f5f5fa;font:16px Arial;display:grid;place-items:center;min-height:95vh;margin:0}
-main{width:min(340px,85vw);padding:26px;background:#20212b;border-radius:16px}
-input,button{box-sizing:border-box;width:100%;padding:12px;margin-top:12px;border-radius:8px}
+main{width:min(360px,88vw);padding:26px;background:#20212b;border-radius:16px}
+input,button{width:100%;padding:12px;margin-top:12px;border-radius:8px}
 input{background:#12131a;color:white;border:1px solid #454653}
 button{background:#625df5;color:white;border:0;cursor:pointer;font-weight:bold}
+button:disabled{opacity:.6;cursor:wait}
 #message{overflow-wrap:anywhere}
 </style>
 </head>
 <body>
 <main>
 <h2>Nextdroider ID</h2>
-<p>Вход или регистрация аккаунта</p>
-<input id="username" placeholder="Имя пользователя" autocomplete="username">
-<input id="password" type="password" placeholder="Пароль" autocomplete="current-password">
-<button onclick="send('/api/login')">Войти</button>
-<button onclick="send('/api/register')">Зарегистрироваться</button>
-<p id="message"></p>
+<p>Вход или регистрация аккаунта PcBrawl V20</p>
+<form id="authForm">
+<input id="username" placeholder="Имя пользователя" autocomplete="username" minlength="3" maxlength="24" required>
+<input id="password" type="password" placeholder="Пароль" autocomplete="current-password" minlength="8" maxlength="128" required>
+<button id="login" type="button" onclick="send('/api/login')">Войти</button>
+<button id="register" type="button" onclick="send('/api/register')">Зарегистрироваться</button>
+</form>
+<p id="message" role="status"></p>
 <script>
 const API_BASE = "https://pcbrawlid.onrender.com";
+const params = new URLSearchParams(location.search);
+const callback = params.get("callback");
 
 async function send(endpoint) {
   const message = document.getElementById("message");
-  message.textContent = "Подключение...";
-  try {
-    if (API_BASE.includes("YOUR-SERVICE")) {
-      throw new Error("Укажи адрес своего Render-сервиса в login.html");
-    }
+  const buttons = document.querySelectorAll("button");
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
 
+  if (!username || !password) {
+    message.textContent = "Введи имя пользователя и пароль.";
+    return;
+  }
+
+  buttons.forEach(button => button.disabled = true);
+  message.textContent = "Подключение...";
+
+  try {
     const response = await fetch(API_BASE + endpoint, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        username: document.getElementById("username").value.trim(),
-        password: document.getElementById("password").value
-      })
+      body: JSON.stringify({username, password})
     });
+
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Ошибка входа");
+    if (!result.token || !result.user) throw new Error("Сервер не вернул сессию.");
 
-    message.textContent = "Успешно! Аккаунт: " + result.user.username +
+    if (callback) {
+      const target = new URL(callback);
+      if (target.protocol !== "http:" ||
+          target.hostname !== "127.0.0.1" ||
+          target.port !== "47831" ||
+          target.pathname !== "/callback") {
+        throw new Error("Недопустимый адрес возврата в игру.");
+      }
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = target.href;
+      form.style.display = "none";
+
+      for (const [name, value] of Object.entries({
+        token: result.token,
+        username: result.user.username,
+        userId: String(result.user.id)
+      })) {
+        const field = document.createElement("input");
+        field.type = "hidden";
+        field.name = name;
+        field.value = value;
+        form.appendChild(field);
+      }
+
+      document.body.appendChild(form);
+      message.textContent = "Вход успешен. Возвращаемся в PcBrawl V20...";
+      form.submit();
+      return;
+    }
+
+    message.textContent = "Успешный вход: " + result.user.username +
       ". ID: " + result.user.id;
   } catch (error) {
     message.textContent = error.message || "Не удалось подключиться";
+  } finally {
+    buttons.forEach(button => button.disabled = false);
   }
 }
 </script>
